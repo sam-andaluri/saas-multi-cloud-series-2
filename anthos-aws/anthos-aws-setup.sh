@@ -4,9 +4,9 @@
 
 sudo apt-get install jq
 
-curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-unzip awscliv2.zip
-sudo ./aws/install
+# curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+# unzip awscliv2.zip
+# sudo ./aws/install
 
 export PROJECT_ID=$(gcloud config get-value project)
 export PROJECT_USER=$(gcloud config get-value core/account) # set current user
@@ -15,21 +15,21 @@ export PROJECT_USER=$(gcloud config get-value core/account) # set current user
 aws --version
 
 # create two KMS keys
-aws kms create-key > aws-kms-key-meta.json
+aws kms create-key > aws-kms-key1-meta.json
 aws kms create-key > aws-kms-key2-meta.json
 
 # fetch ARN from each key
-export KMS_ARN1=$(cat aws-kms-key-meta.json | jq '.[].Arn')
+export KMS_ARN1=$(cat aws-kms-key1-meta.json | jq '.[].Arn')
 export KMS_ARN2=$(cat aws-kms-key2-meta.json | jq '.[].Arn')
 echo "Key 1 Arn: ${KMS_ARN1}"
 echo "Key 2 Arn: ${KMS_ARN2}"
 
 # create aliases for keys
 aws kms create-alias \                                                                  
-    --alias-name=alias/gke-key \
+    --alias-name=alias/anthos-key1 \
     --target-key-id=$KMS_ARN1
 aws kms create-alias \                                                                  
-    --alias-name=alias/gke-key2 \
+    --alias-name=alias/anthos-key2 \
     --target-key-id=$KMS_ARN2
 
 # enable gcloud apis
@@ -76,20 +76,15 @@ gcloud projects add-iam-policy-binding \
 gcloud projects add-iam-policy-binding \
     $PROJECT_ID \
     --member serviceAccount:node-sa@$PROJECT_ID.iam.gserviceaccount.com \
-    --role roles/storageAdmin # objectViewer didn't work for mgmt install (need create TF state bucket)
+    --role roles/storageAdmin 
 
-#####################################################################################
-# download anthos-gke CLI 
-# NOTE: your service account MUST BE ADDED (MANUALLY BY GOOGLE) TO APPROVE LIST FIRST
-#####################################################################################
-
-# gcloud auth activate-service-account --key-file=node-key.json # if not project owner
+gcloud auth activate-service-account --key-file=node-key.json # if not project owner
 
 # mac
-gsutil cp gs://gke-multi-cloud-release/aws/aws-1.4.2-gke.1/bin/darwin/amd64/anthos-gke .
+gsutil cp gs://gke-multi-cloud-release/aws/aws-1.9.2-gke.2/bin/darwin/amd64/anthos-gke .
 
 # linux
-# gsutil cp gs://gke-multi-cloud-release/aws/aws-1.4.2-gke.1/bin/linux/amd64/anthos-gke .
+# gsutil cp gs://gke-multi-cloud-release/aws/aws-1.9.2-gke.2/bin/linux/amd64/anthos-gke .
 
 chmod 755 anthos-gke
 sudo mv anthos-gke /usr/local/bin
